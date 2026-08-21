@@ -63,3 +63,9 @@ Useful entry points while the development server is running:
 - `/account` — signed-in profile, security, and privacy information
 
 CI provisions PostgreSQL, deploys the baseline migration, seeds the deterministic fixtures, and runs `pnpm test:db-smoke`; that smoke creates and reloads the first seller draft, specifically protecting the seed-to-domain contract.
+
+## Contributing and reuse
+
+MoveKA is open source under the MIT License and is intended to improve through collaboration. Anyone may build on it within the terms of `LICENSE`. Contributions are welcome, especially fixes for the release blockers and usability gaps listed in `docs/HANDOFF.md`. Please read `CONTRIBUTING.md` before proposing a change and preserve the prototype's synthetic-data, independent-product, and no-live-government-integration boundaries.
+
+The Build What Moves India FAQ says builders retain full rights to their builds. This project therefore makes its independently created source available for reuse and improvement under the MIT License. Third-party dependencies and assets remain subject to their own licences.
