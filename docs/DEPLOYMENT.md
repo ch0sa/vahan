@@ -8,7 +8,7 @@ MoveKA must be deployed only as a fictional hackathon demonstration. It does not
 - A dedicated PostgreSQL database. Vercel now provisions external Postgres providers through its Marketplace; Neon is an appropriate free-tier option for this prototype.
 - A Vercel project using Node.js and the repository's `pnpm` lockfile.
 
-The release pins both the Neon database and Vercel Functions to Singapore (`sin1`) so application requests do not cross continents before reaching PostgreSQL. Use the pooled PostgreSQL connection string supplied as `DATABASE_URL`.
+The release pins both the Neon database and Vercel Functions to Singapore (`sin1`) so application requests do not cross continents before reaching PostgreSQL. Runtime queries use the pooled connection supplied as `DATABASE_URL`; Prisma migration commands prefer Neon's `DATABASE_URL_UNPOOLED` automatically.
 
 ## Environment variables
 
