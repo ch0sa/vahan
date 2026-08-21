@@ -1,0 +1,2 @@
+export function canSubmitCaseCorrection(input: { isCitizen: boolean; participantRole?: string; requestStatus?: string; targetRole?: string; state: string }) { return input.isCitizen && input.state === "CORRECTION_REQUIRED" && input.requestStatus === "OPEN" && input.participantRole === input.targetRole; }
+export function canRequestCaseWithdrawal(input: { isCitizen: boolean; isParticipant: boolean; state: string }) { return input.isCitizen && input.isParticipant && ["SUBMITTED", "SENT_TO_RTO"].includes(input.state); }

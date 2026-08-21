@@ -1,0 +1,1 @@
+export function governmentOutboxEligible(input:{id:string;requestedId:string;kind:string;status:string;nextAttemptAt:number;leaseUntil?:number;now:number}){return input.id===input.requestedId&&input.kind==="GOVERNMENT_CASE_SUBMIT"&&((input.status==="PENDING"&&input.nextAttemptAt<=input.now)||(input.status==="PROCESSING"&&(input.leaseUntil??0)<input.now));}

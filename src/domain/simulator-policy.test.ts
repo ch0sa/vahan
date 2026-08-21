@@ -1,0 +1,3 @@
+import { describe, expect, it } from "vitest";
+import { allowedSimulatorEvents, caseStatusCopy, stableSimulatorEventId } from "./simulator-policy";
+describe("simulator policy", () => { it("derives only context-sensitive events and stable ids", () => { expect(allowedSimulatorEvents("SENT_TO_RTO")).toEqual(["INWARDED"]); expect(allowedSimulatorEvents("CORRECTION_REQUIRED", false)).toEqual([]); expect(allowedSimulatorEvents("CORRECTION_REQUIRED", true)).toEqual(["CORRECTION_ACKNOWLEDGED"]); expect(stableSimulatorEventId("a", "INWARDED", "i")).toBe(stableSimulatorEventId("a", "INWARDED", "i")); }); it("uses honest status copy", () => expect(caseStatusCopy("SENT_TO_RTO")).toMatch(/not an official/i)); });

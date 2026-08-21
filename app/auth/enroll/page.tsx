@@ -1,0 +1,11 @@
+import { confirmEnrollment, enrollmentQr } from "@/app/auth/actions";
+import { authErrorMessage } from "@/src/identity/errors";
+import { identityDisclosure } from "@/src/identity/disclosure";
+import { isDemoMode } from "@/src/identity/config";
+import Image from "next/image";
+import { cookies } from "next/headers";
+import { dictionary, localeFrom, routeText } from "@/src/i18n";
+import { SubmitButton } from "@/app/components";
+import Link from "next/link";
+export const dynamic = "force-dynamic";
+export default async function EnrollPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) { const locale=localeFrom((await cookies()).get("moveka_locale")?.value), t=routeText[locale]; if (!isDemoMode()) return <div className="auth-shell"><div className="auth-card"><h1>{t.unavailable}</h1><p role="alert">{t.disabled}</p></div></div>; const enrollment=await enrollmentQr(); if (!enrollment) return <div className="auth-shell"><div className="auth-card"><h1>{t.choose}</h1><Link className="button-link" href="/auth/register">{t.openHelper}</Link></div></div>; const message=authErrorMessage((await searchParams).error,locale); return <div className="auth-shell enroll-shell"><div className="auth-intro"><Link className="back-link" href="/auth/register">← Choose another role</Link><p className="eyebrow">Secure your account</p><h1>{t.enroll}</h1><p>Use an authenticator app so you can return to your saved journey.</p><ol className="enroll-steps"><li><span>1</span>Scan the QR code</li><li><span>2</span>Enter the current code</li><li><span>3</span>Continue to your dashboard</li></ol></div><div className="auth-card qr-card">{message&&<p className="form-alert" role="alert" aria-live="assertive" tabIndex={-1}>{message}</p>}<div className="qr-frame"><Image src={enrollment.image} alt={t.qrAlt} width={220} height={220} unoptimized priority/></div><p className="muted">{t.scan}</p><form action={confirmEnrollment}><label htmlFor="code">{t.code}</label><input id="code" name="code" inputMode="numeric" pattern="[0-9]{6}" autoComplete="one-time-code" placeholder="000000" required/><SubmitButton pendingText={dictionary[locale].working}>{t.verify} <span aria-hidden>→</span></SubmitButton></form><p className="privacy-note">{identityDisclosure(locale)}</p></div></div>; }

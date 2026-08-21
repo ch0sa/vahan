@@ -1,0 +1,556 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CITIZEN
+  DEMO_OPERATOR
+}
+enum WorkspaceMemberRole {
+  MEMBER
+}
+enum ParticipantRole {
+  SELLER
+  BUYER
+}
+enum ApplicationState {
+  DRAFT
+  SELLER_ACTION_REQUIRED
+  SELLER_VERIFIED
+  BUYER_ACTION_REQUIRED
+  BUYER_VERIFIED
+  DOCUMENTS_REQUIRED
+  READY_FOR_SUBMISSION
+  PAYMENT_REQUIRED
+  PAYMENT_PENDING
+  PAYMENT_CONFIRMED
+  PAYMENT_FAILED
+  PAYMENT_RECONCILIATION_REQUIRED
+  SUBMITTED
+  SENT_TO_RTO
+  RTO_PROCESSING
+  CORRECTION_REQUIRED
+  APPROVED
+  REJECTED
+  REGISTRY_UPDATE_COMPLETE
+  WITHDRAWAL_PENDING
+  WITHDRAWAL_REQUIRES_RTO
+  WITHDRAWN_EXTERNALLY_CONFIRMED
+}
+enum PaymentStatus {
+  REQUESTED
+  PENDING
+  FAILED
+  CONFIRMED
+  RECONCILIATION_REQUIRED
+}
+enum PaymentEventDisposition {
+  PENDING
+  APPLIED
+  DUPLICATE
+  STALE
+  QUARANTINED
+}
+enum IntegrationStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  QUARANTINED
+}
+enum ExternalEventDisposition {
+  PENDING
+  APPLIED
+  DUPLICATE
+  STALE
+  QUARANTINED
+}
+enum ReadinessStatus {
+  READY_FOR_DEMO
+  BLOCKED_FOR_DEMO
+  UNKNOWN
+}
+
+model User {
+  id String @id @default(cuid())
+  displayName String
+  role UserRole @default(CITIZEN)
+  createdAt DateTime @default(now())
+  profile UserProfile?
+  sessions Session[]
+  totpCredential TotpCredential?
+  identityReferences ExternalIdentityReference[]
+  ownerships VehicleOwnership[]
+  participants ApplicationParticipant[]
+  notifications Notification[]
+  auditEvents AuditEvent[] @relation("AuditActor")
+  operatorActions OperatorAction[]
+  workspaceMemberships WorkspaceMembership[]
+}
+model Workspace {
+  id String @id @default(cuid())
+  label String
+  resetVersion Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  memberships WorkspaceMembership[]
+  vehicles VehicleProjection[]
+  applications Application[]
+  commandReceipts CommandReceipt[]
+}
+model WorkspaceMembership {
+  id String @id @default(cuid())
+  workspaceId String
+  userId String
+  role WorkspaceMemberRole @default(MEMBER)
+  createdAt DateTime @default(now())
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([workspaceId, userId])
+  @@index([userId, workspaceId])
+}
+model UserProfile {
+  id String @id @default(cuid())
+  userId String @unique
+  locale String @default("en")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+model Session {
+  id String @id @default(cuid())
+  userId String
+  tokenHash String @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+model TotpCredential {
+  id String @id @default(cuid())
+  userId String @unique
+  encryptedSecret String
+  encryptionIv String
+  enrollmentState String @default("NOT_ENROLLED")
+  lastAcceptedStep Int?
+  failedAttempts Int @default(0)
+  lockedUntil DateTime?
+  enrollmentChallengeHash String?
+  enrollmentExpiresAt DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+model ExternalIdentityReference {
+  id String @id @default(cuid())
+  userId String
+  source String
+  reference String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([source, reference])
+}
+model VehicleProjection {
+  id String @id @default(cuid())
+  workspaceId String
+  registrationNumber String
+  source String
+  externalReference String
+  sourceVersion String?
+  lastSyncedAt DateTime
+  vehicleClass String @default("PRIVATE_NON_TRANSPORT")
+  registrationState String @default("KA")
+  ownerships VehicleOwnership[]
+  applications Application[]
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@unique([workspaceId, registrationNumber])
+}
+model VehicleOwnership {
+  id String @id @default(cuid())
+  vehicleProjectionId String
+  ownerId String
+  validFrom DateTime
+  validUntil DateTime?
+  source String
+  externalReference String
+  observedAt DateTime
+  transferApplicationReference String?
+  vehicle VehicleProjection @relation(fields: [vehicleProjectionId], references: [id], onDelete: Restrict)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  @@index([vehicleProjectionId, validFrom])
+}
+model ServiceDefinition {
+  id String @id @default(cuid())
+  key String
+  version String
+  processingMode String
+  provenance String
+  rules ServiceRule[]
+  applications Application[]
+  readinessResults ReadinessResult[]
+  @@unique([key, version])
+}
+model ServiceRule {
+  id String @id @default(cuid())
+  serviceDefinitionId String
+  version String
+  body Json
+  service ServiceDefinition @relation(fields: [serviceDefinitionId], references: [id], onDelete: Cascade)
+  applications Application[]
+  @@unique([serviceDefinitionId, version])
+}
+model Application {
+  id String @id @default(cuid())
+  workspaceId String
+  vehicleProjectionId String
+  serviceDefinitionId String
+  serviceRuleId String
+  state ApplicationState @default(DRAFT)
+  aggregateVersion Int @default(0)
+  ruleVersion String
+  ruleBodyHash String
+  ruleBodySnapshot Json
+  readinessResults ReadinessResult[]
+  sellerDeclaration SellerDeclaration?
+  buyerInformation BuyerInformationSnapshot?
+  buyerDeclaration BuyerDeclaration?
+  commandReceipts CommandReceipt[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  vehicle VehicleProjection @relation(fields: [vehicleProjectionId], references: [id], onDelete: Restrict)
+  service ServiceDefinition @relation(fields: [serviceDefinitionId], references: [id], onDelete: Restrict)
+  serviceRule ServiceRule @relation(fields: [serviceRuleId], references: [id], onDelete: Restrict)
+  participants ApplicationParticipant[]
+  workflowEvents WorkflowEvent[]
+  externalCase ExternalCaseReference?
+  documents DocumentRequirementSnapshot[]
+  payments Payment[]
+  pricingSnapshot PricingSnapshot?
+  inboxEvents InboxEvent[]
+  correctionRequests CorrectionRequest[]
+  withdrawalRequests WithdrawalRequest[]
+  outboxMessages OutboxMessage[]
+  auditEvents AuditEvent[]
+  notifications Notification[]
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@index([vehicleProjectionId, state])
+  @@index([workspaceId, updatedAt])
+}
+model BuyerInformationSnapshot {
+  id String @id @default(cuid())
+  applicationId String @unique
+  version String
+  data Json
+  documentChecklist Json
+  provenanceVersion String
+  disclosureVersion String
+  contentHash String
+  createdAt DateTime @default(now())
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  declaration BuyerDeclaration?
+}
+model BuyerDeclaration {
+  id String @id @default(cuid())
+  applicationId String @unique
+  buyerInformationId String @unique
+  statementVersion String
+  statementSnapshot String
+  createdAt DateTime @default(now())
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  information BuyerInformationSnapshot @relation(fields: [buyerInformationId], references: [id], onDelete: Restrict)
+}
+model ReadinessResult {
+  id String @id @default(cuid())
+  applicationId String
+  serviceDefinitionId String
+  status ReadinessStatus
+  processingMode String
+  inputs Json
+  findings Json
+  ruleBodyHash String
+  evaluatorVersion String
+  provenanceVersion String
+  disclosureVersion String
+  createdAt DateTime @default(now())
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  service ServiceDefinition @relation(fields: [serviceDefinitionId], references: [id], onDelete: Restrict)
+  sellerDeclaration SellerDeclaration?
+  @@index([applicationId, createdAt])
+}
+model SellerDeclaration {
+  id String @id @default(cuid())
+  applicationId String @unique
+  readinessResultId String @unique
+  statementVersion String
+  statementSnapshot String
+  createdAt DateTime @default(now())
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  readiness ReadinessResult @relation(fields: [readinessResultId], references: [id], onDelete: Restrict)
+}
+model CommandReceipt {
+  id String @id @default(cuid())
+  scope String
+  actorId String
+  command String
+  idempotencyKey String
+  requestHash String
+  result Json
+  aggregateVersion Int
+  createdAt DateTime @default(now())
+  applicationId String?
+  workspaceId String?
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  @@unique([scope, actorId, command, idempotencyKey])
+}
+model ApplicationParticipant {
+  id String @id @default(cuid())
+  applicationId String
+  userId String
+  role ParticipantRole
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@unique([applicationId, role])
+  @@unique([applicationId, userId])
+}
+model WorkflowEvent {
+  id String @id @default(cuid())
+  applicationId String
+  version Int
+  eventType String
+  payload Json?
+  createdAt DateTime @default(now())
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  @@unique([applicationId, version])
+}
+model ExternalCaseReference {
+  id String @id @default(cuid())
+  applicationId String @unique
+  source String
+  externalReference String
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  @@unique([source, externalReference])
+}
+model DocumentRequirementSnapshot {
+  id String @id @default(cuid())
+  applicationId String
+  participantRole ParticipantRole
+  ruleVersion String
+  required Boolean
+  reason String
+  submissions DocumentSubmission[]
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+model DocumentSubmission {
+  id String @id @default(cuid())
+  requirementId String
+  currentVersion Int @default(1)
+  requirement DocumentRequirementSnapshot @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  versions DocumentSubmissionVersion[]
+}
+model DocumentSubmissionVersion {
+  id String @id @default(cuid())
+  documentSubmissionId String
+  version Int
+  metadata Json
+  submission DocumentSubmission @relation(fields: [documentSubmissionId], references: [id], onDelete: Cascade)
+  @@unique([documentSubmissionId, version])
+}
+model Payment {
+  id String @id @default(cuid())
+  applicationId String @unique
+  status PaymentStatus @default(REQUESTED)
+  amountMinor Int
+  currency String @default("INR")
+  pricingSnapshotId String @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  pricingSnapshot PricingSnapshot @relation(fields: [pricingSnapshotId], references: [id], onDelete: Restrict)
+  attempts PaymentAttempt[]
+  reconciliations PaymentReconciliation[]
+}
+model PricingSnapshot {
+  id String @id @default(cuid())
+  applicationId String @unique
+  amountMinor Int
+  currency String
+  label String
+  disclosureVersion String
+  ruleVersion String
+  contentHash String
+  createdAt DateTime @default(now())
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  payment Payment?
+}
+model PaymentAttempt {
+  id String @id @default(cuid())
+  paymentId String
+  attemptNumber Int
+  idempotencyKey String
+  providerReference String? @unique
+  status PaymentStatus
+  sequence Int @default(0)
+  safeCode String?
+  requestedAt DateTime @default(now())
+  dispatchedAt DateTime?
+  resolvedAt DateTime?
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  providerEvents PaymentProviderEvent[]
+  @@unique([paymentId, attemptNumber])
+  @@unique([paymentId, idempotencyKey])
+}
+model PaymentProviderEvent {
+  id String @id @default(cuid())
+  paymentAttemptId String?
+  source String
+  externalEventId String
+  providerReference String
+  kind String
+  payloadVersion String
+  sequence Int
+  payload Json
+  payloadHash String
+  disposition PaymentEventDisposition @default(PENDING)
+  receivedAt DateTime @default(now())
+  processedAt DateTime?
+  attempt PaymentAttempt? @relation(fields: [paymentAttemptId], references: [id], onDelete: SetNull)
+  @@unique([source, externalEventId])
+}
+model PaymentReconciliation {
+  id String @id @default(cuid())
+  paymentId String
+  status String
+  reasonCode String
+  resultCode String?
+  evidence Json?
+  openedAt DateTime @default(now())
+  resolvedAt DateTime?
+  triggerAttemptId String?
+  triggerEventId String?
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+}
+model InboxEvent {
+  id String @id @default(cuid())
+  applicationId String?
+  source String
+  externalEventId String
+  externalReference String?
+  sequence Int
+  payload Json
+  payloadVersion String?
+  kind String?
+  payloadHash String?
+  disposition ExternalEventDisposition @default(PENDING)
+  safeReason String?
+  receivedAt DateTime @default(now())
+  processedAt DateTime?
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  @@unique([source, externalEventId])
+}
+model ExternalEventCursor {
+  id String @id @default(cuid())
+  source String
+  externalReference String
+  lastAppliedSequence Int @default(0)
+  lastAppliedHash String?
+  @@unique([source, externalReference])
+}
+model CorrectionRequest {
+  id String @id @default(cuid())
+  applicationId String
+  sourceEventId String @unique
+  sequence Int
+  reasonCode String
+  explanation String
+  targetRole ParticipantRole
+  status String @default("OPEN")
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  submissions CorrectionSubmission[]
+  @@unique([applicationId, sequence])
+}
+model CorrectionSubmission {
+  id String @id @default(cuid())
+  correctionRequestId String
+  version Int
+  snapshot Json
+  createdAt DateTime @default(now())
+  request CorrectionRequest @relation(fields: [correctionRequestId], references: [id], onDelete: Cascade)
+  @@unique([correctionRequestId, version])
+}
+model WithdrawalRequest {
+  id String @id @default(cuid())
+  applicationId String
+  version Int
+  requesterId String
+  status String @default("OPEN")
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  @@unique([applicationId, version])
+}
+model OutboxMessage {
+  id String @id @default(cuid())
+  applicationId String?
+  kind String
+  idempotencyKey String
+  payload Json
+  status IntegrationStatus @default(PENDING)
+  attemptCount Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  claimedAt DateTime?
+  leaseUntil DateTime?
+  completedAt DateTime?
+  safeLastErrorCode String?
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  @@unique([kind, idempotencyKey])
+}
+model ExternalStatusEvent {
+  id String @id @default(cuid())
+  source String
+  externalEventId String
+  sequence Int
+  payload Json
+  @@unique([source, externalEventId])
+}
+model IntegrationAttempt {
+  id String @id @default(cuid())
+  provider String
+  operation String
+  idempotencyKey String
+  status IntegrationStatus
+  @@unique([provider, operation, idempotencyKey])
+}
+model Notification {
+  id String @id @default(cuid())
+  userId String
+  applicationId String?
+  message String
+  href String?
+  dedupeKey String? @unique
+  readAt DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  @@index([applicationId])
+}
+model AuditEvent {
+  id String @id @default(cuid())
+  applicationId String?
+  actorId String?
+  action String
+  payload Json?
+  createdAt DateTime @default(now())
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+}
+model OperatorAction {
+  id String @id @default(cuid())
+  operatorId String
+  action String
+  targetId String
+  createdAt DateTime @default(now())
+  operator User @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  @@index([operatorId, action, createdAt])
+}
