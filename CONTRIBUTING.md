@@ -26,6 +26,6 @@ Prioritize the open P0 and P1 work in `docs/HANDOFF.md`, particularly visitor-is
 
 Never commit `.env`, `.env.local`, databases, authentication secrets, generated build output, dependency folders, or real personal data.
 
-## Licence status
+## Licence
 
-The repository currently has no open-source licence. Contributions may be proposed by people who have repository access, but no broad permission to copy, redistribute, or reuse the source is granted until the owner adds a licence. If the owner wants unrestricted community participation, selecting a standard licence and making the repository public should be an explicit release decision.
+MoveKA is distributed under the MIT License. By contributing, you agree that your contribution may be distributed under that licence. Third-party dependencies and assets remain subject to their own licences.

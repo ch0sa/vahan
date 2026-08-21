@@ -26,10 +26,11 @@ Read these files in this order:
 | Item | Current value |
 |---|---|
 | GitHub | `https://github.com/ch0sa/vahan` |
-| Repository visibility | Private |
+| Repository visibility | Public |
 | Default branch | `main` |
-| Handoff commit | `f2372483bc90bef073e2ffb52ee92d1f0f90fe21` |
+| Application baseline commit | `f2372483bc90bef073e2ffb52ee92d1f0f90fe21` |
 | Merged release PR | `https://github.com/ch0sa/vahan/pull/1` |
+| Handoff and open-source PR | `https://github.com/ch0sa/vahan/pull/2` |
 | Production | `https://moveka.vercel.app` |
 | Vercel project | `chosas-projects/moveka` |
 | Production database | Neon resource `moveka-postgres`, free plan, Singapore |
@@ -125,7 +126,7 @@ Until that is implemented, describe the public deployment as an early shared pro
 - Add a concise architecture/process visual showing citizen orchestration around external government systems.
 - Add product analytics that collect no sensitive data: start rate, successful seller handoff, buyer continuation, completion and abandonment step.
 - Add error monitoring, structured redacted logs, health checks, backup/restore rehearsal and deployment rollback instructions.
-- Decide whether the GitHub repository must be public for judging; it is currently private.
+- Keep the public repository free of secrets, real personal data, generated build output and deployment credentials.
 - Configure a custom domain only if needed.
 
 ## 6. Confirmed prototype limitations
