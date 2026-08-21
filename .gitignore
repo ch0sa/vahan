@@ -2,6 +2,7 @@ node_modules/
 .local-tools/
 .pnpm-store/
 .next/
+.vercel/
 tsconfig.tsbuildinfo
 playwright-report/
 test-results/
