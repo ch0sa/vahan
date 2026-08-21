@@ -2,13 +2,10 @@ node_modules/
 .local-tools/
 .pnpm-store/
 .next/
-.vercel/
-tsconfig.tsbuildinfo
+.git/
 playwright-report/
 test-results/
 coverage/
 .env
 .env.local
-!.env.example
-prisma/*.db
 *.log
