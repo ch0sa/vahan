@@ -1,5 +1,10 @@
 # Project documentation
 
+Continuation and submission entry points:
+
+- `HANDOFF.md` — operational takeover instructions, current deployment, known defects and prioritized backlog.
+- `BUILD_FOR_INDIA_PROJECT_OVERVIEW.md` — problem statement, hackathon fit, working/mocked boundary, technology, scaling path and honest gap assessment.
+
 RUN 1 produced the following reviewed project baselines:
 
 - ARCHITECTURE.md
